@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Socket.IO Chat</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f9; }
+        h1 { text-align: center; color: #333; }
+        #chat { max-width: 600px; margin: 20px auto; padding: 10px; background: #fff; border-radius: 8px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); }
+        #messages { list-style-type: none; padding: 0; }
+        #messages li { padding: 8px 10px; margin-bottom: 10px; background: #f1f1f1; border-radius: 4px; }
+        #messages li:nth-child(odd) { background: #e1e1e1; }
+        #messageForm { display: flex; }
+        #messageInput { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 4px 0 0 4px; }
+        #sendButton { padding: 10px; border: 1px solid #ccc; border-left: none; background: #28a745; color: #fff; cursor: pointer; border-radius: 0 4px 4px 0; }
+        #sendButton:hover { background: #218838; }
+        #nameForm { text-align: center; margin-bottom: 20px; }
+        #nameInput { padding: 10px; border: 1px solid #ccc; border-radius: 4px; width: 80%; }
+    </style>
+</head>
+<body>
+    <h1>Socket.IO Chat</h1>
+    <div id="nameForm">
+        <input id="nameInput" type="text" placeholder="Enter your name" autocomplete="off" />
+        <button onclick="setName()">Set Name</button>
+    </div>
+    <div id="chat" style="display:none;">
+        <ul id="messages"></ul>
+        <div id="messageForm">
+            <input id="messageInput" type="text" placeholder="Enter message here..." autocomplete="off" />
+            <button id="sendButton" onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        let userName = '';
+
+        function setName() {
+            const nameInput = document.getElementById('nameInput');
+            userName = nameInput.value.trim();
+            if (userName !== '') {
+                socket.emit('set name', userName);
+                document.getElementById('nameForm').style.display = 'none';
+                document.getElementById('chat').style.display = 'block';
+                document.getElementById('messageInput').focus();
+            }
+        }
+
+        function formatTime(date) {
+            const hours = date.getHours().toString().padStart(2, '0');
+            const minutes = date.getMinutes().toString().padStart(2, '0');
+            return `${hours}:${minutes}`;
+        }
+
+        function sendMessage() {
+            const messageInput = document.getElementById('messageInput');
+            const message = messageInput.value.trim();
+            if (message !== '' && userName !== '') {
+                const timestamp = formatTime(new Date());
+                socket.emit('chat message', { userName, message, timestamp });
+                messageInput.value = '';
+                messageInput.focus();
+            }
+        }
+
+        socket.on('chat history', function(history) {
+            const messages = document.getElementById('messages');
+            history.forEach(data => {
+                const li = document.createElement('li');
+                li.innerHTML = `<strong>${data.userName} [${data.timestamp}]:</strong> ${data.message}`;
+                messages.appendChild(li);
+            });
+            messages.scrollTop = messages.scrollHeight;
+        });
+
+        socket.on('chat message', function(data) {
+            const messages = document.getElementById('messages');
+            const li = document.createElement('li');
+            li.innerHTML = `<strong>${data.userName} [${data.timestamp}]:</strong> ${data.message}`;
+            messages.appendChild(li);
+            messages.scrollTop = messages.scrollHeight;
+        });
+
+        document.getElementById('messageInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>
